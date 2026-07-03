@@ -5,7 +5,7 @@
 define('SMTP_HOST', 'smtp.gmail.com');
 define('SMTP_PORT', 587);
 define('SMTP_USERNAME', 'shadrackmwendwa477@gmail.com');
-define('SMTP_PASSWORD', 'ozqyrycnrxhhwpqn');
+define('SMTP_PASSWORD', 'Your-app-passward');
 define('SMTP_ENCRYPTION', 'tls');
 
 // Sender Details
