@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_class'])) {
         $error_message = "Please enter an amount of at least KES 200.00.";
     } else {
         // Get class details
-        $stmt = $pdo->prepare("SELECT class_name, fee_amount FROM computer_classes WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT class_name, fee_amount FROM computer_classes WHERE id = ? AND deleted_at IS NULL");
         $stmt->execute([$class_id]);
         $class = $stmt->fetch();
         
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_class'])) {
             if ($balance <= 0) {
                 $payment_status = 'paid';
             } elseif ($amount_paid > 0) {
-                $payment_status = 'pending';
+                $payment_status = 'partial';
             } else {
                 $payment_status = 'pending';
             }
@@ -87,16 +87,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_class'])) {
             if ($existing_user) {
                 $user_id = $existing_user['id'];
                 
-                // Check if already registered for this class
-                $check_stmt = $pdo->prepare("SELECT id FROM class_registrations WHERE user_id = ? AND class_id = ?");
+                // CHECK IF ALREADY REGISTERED FOR THIS CLASS - REMOVED deleted_at
+                $check_stmt = $pdo->prepare("
+                    SELECT id, graduation_status 
+                    FROM class_registrations 
+                    WHERE user_id = ? AND class_id = ?
+                ");
                 $check_stmt->execute([$user_id, $class_id]);
-                if ($check_stmt->rowCount() > 0) {
-                    $error_message = "You have already registered for this class.";
+                $existing_registration = $check_stmt->fetch();
+                
+                if ($existing_registration) {
+                    // Student is already registered for this class
+                    $reg_status = $existing_registration['graduation_status'] ?? 'enrolled';
+                    if ($reg_status == 'graduated' || $reg_status == 'completed') {
+                        $error_message = "You have already completed this class. You cannot register for the same class again.";
+                    } else {
+                        $error_message = "You are already registered for this class. Please check your dashboard.";
+                    }
                 } else {
                     // Register for class with existing user
                     $stmt = $pdo->prepare("
-                        INSERT INTO class_registrations (user_id, class_id, full_name, email, phone, payment_amount, total_fee, remaining_balance, payment_status, registration_date, created_at) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                        INSERT INTO class_registrations (user_id, class_id, full_name, email, phone, payment_amount, total_fee, remaining_balance, payment_status, registration_date, created_at, graduation_status) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 'enrolled')
                     ");
                     if ($stmt->execute([$user_id, $class_id, $full_name, $email, $phone, $amount_paid, $total_fee, $balance, $payment_status])) {
                         $registration_success = true;
@@ -138,8 +150,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_class'])) {
                         
                         // Register for class
                         $stmt = $pdo->prepare("
-                            INSERT INTO class_registrations (user_id, class_id, full_name, email, phone, payment_amount, total_fee, remaining_balance, payment_status, registration_date, created_at) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                            INSERT INTO class_registrations (user_id, class_id, full_name, email, phone, payment_amount, total_fee, remaining_balance, payment_status, registration_date, created_at, graduation_status) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 'enrolled')
                         ");
                         if ($stmt->execute([$user_id, $class_id, $full_name, $email, $phone, $amount_paid, $total_fee, $balance, $payment_status])) {
                             $registration_success = true;
@@ -190,19 +202,8 @@ $page_title = 'Class Registration - Makueni County Innovation Hub';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
-            position: relative;
-        }
-        
-        /* Background Image Overlay */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-height: 100vh; position: relative; }
         body::before {
             content: '';
             position: fixed;
@@ -218,8 +219,6 @@ $page_title = 'Class Registration - Makueni County Innovation Hub';
             opacity: 0.85;
             z-index: 0;
         }
-        
-        /* Additional gradient overlay for better readability */
         body::after {
             content: '';
             position: fixed;
@@ -231,8 +230,6 @@ $page_title = 'Class Registration - Makueni County Innovation Hub';
             z-index: 0;
             pointer-events: none;
         }
-        
-        /* Header Navigation - Left Aligned with Larger Logo */
         .main-header {
             background: linear-gradient(135deg, #0a3d2a, #1a5c3a);
             padding: 20px 0;
@@ -240,486 +237,79 @@ $page_title = 'Class Registration - Makueni County Innovation Hub';
             z-index: 1001;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
-        
-        .header-container {
-            display: flex;
-            justify-content: flex-start;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        
-        .header-logo {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        
-        .header-logo-img {
-            width: 100px;
-            height: 100px;
-            background: white;
-            border-radius: 50%;
-            padding: 12px;
-            border: 3px solid #FFD700;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
-        
-        .header-logo-img:hover {
-            transform: scale(1.05);
-        }
-        
-        .header-title h2 {
-            color: white;
-            font-size: 1.8rem;
-            margin: 0;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .header-title p {
-            color: #FFD700;
-            font-size: 0.9rem;
-            margin: 0;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        
-        /* Government Banner */
-        .gov-banner {
-            background: #0d3d2a;
-            color: #FFD700;
-            text-align: center;
-            padding: 8px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            letter-spacing: 1px;
-            position: relative;
-            z-index: 1001;
-        }
-        
-        .gov-banner i {
-            margin-right: 8px;
-        }
-        
-        /* Container */
-        .register-container {
-            width: 100%;
-            max-width: 500px;
-            margin: 40px auto;
-            padding: 20px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        /* Logo Section inside Form */
-        .form-logo-section {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .form-county-logo {
-            width: 80px;
-            height: 80px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 15px;
-            padding: 12px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            border: 2px solid #FFD700;
-        }
-        
-        .form-county-logo img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        
-        .form-county-name {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #1a5276;
-            background: white;
-            display: inline-block;
-            padding: 5px 25px;
-            border-radius: 40px;
-            margin: 5px 0;
-        }
-        
-        .form-county-tagline {
-            font-size: 0.75rem;
-            color: #1a5c3a;
-            font-weight: 600;
-            background: rgba(255,255,255,0.9);
-            display: inline-block;
-            padding: 4px 15px;
-            border-radius: 20px;
-        }
-        
-        /* Card */
-        .register-card {
-            background: white;
-            border-radius: 20px;
-            padding: 35px 30px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            border: none;
-        }
-        
-        .welcome-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #1a5c3a;
-            margin-bottom: 5px;
-            text-align: center;
-        }
-        
-        .welcome-subtitle {
-            font-size: 0.85rem;
-            color: #666;
-            margin-bottom: 25px;
-            text-align: center;
-        }
-        
-        /* Form Styles */
-        .input-group-custom {
-            position: relative;
-            margin-bottom: 20px;
-        }
-        
-        .input-group-custom i {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #1a5c3a;
-            font-size: 1rem;
-            z-index: 1;
-        }
-        
-        .form-control-custom {
-            width: 100%;
-            padding: 14px 15px 14px 45px;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-        }
-        
-        .form-control-custom:focus {
-            outline: none;
-            border-color: #1a5c3a;
-            box-shadow: 0 0 0 3px rgba(26,92,58,0.1);
-        }
-        
-        select.form-control-custom {
-            appearance: none;
-            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%231a5c3a"><path d="M7 10l5 5 5-5z"/></svg>');
-            background-repeat: no-repeat;
-            background-position: right 15px center;
-            background-size: 20px;
-            cursor: pointer;
-        }
-        
-        /* Amount Display */
-        .amount-display {
-            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
-            border-radius: 12px;
-            padding: 12px 15px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        .amount-display small {
-            font-size: 0.7rem;
-            color: #555;
-            display: block;
-        }
-        
-        .amount-display h3 {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #1a5c3a;
-            margin: 0;
-        }
-        
-        /* Balance Display */
-        .balance-display {
-            background: #fff3cd;
-            border-radius: 12px;
-            padding: 12px 15px;
-            text-align: center;
-            margin-bottom: 20px;
-            border-left: 4px solid #ffc107;
-        }
-        
-        .balance-display .balance-amount {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #856404;
-        }
-        
-        /* Button */
-        .btn-register {
-            background: linear-gradient(135deg, #1a5c3a, #0d3d2a);
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1rem;
-            width: 100%;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-        }
-        
-        .btn-register:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(26,92,58,0.4);
-            color: #FFD700;
-        }
-        
-        .btn-download {
-            background: linear-gradient(135deg, #28a745, #1e7e34);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-        
-        .btn-download:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(40,167,69,0.4);
-            color: white;
-        }
-        
-        .btn-dashboard {
-            background: linear-gradient(135deg, #1a5276, #2980b9);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-        
-        .btn-dashboard:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(26,82,118,0.4);
-            color: white;
-        }
-        
-        /* Login Link */
-        .login-link {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 0.85rem;
-            color: #666;
-        }
-        
-        .login-link a {
-            color: #1a5c3a;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-        
-        .go-home-link {
-            display: inline-block;
-            margin-top: 5px;
-            font-size: 0.75rem;
-        }
-        
-        .go-home-link a {
-            color: #1a5c3a;
-            text-decoration: none;
-        }
-        
-        .go-home-link a:hover {
-            text-decoration: underline;
-        }
-        
-        /* Alert */
-        .alert-custom {
-            border-radius: 12px;
-            padding: 12px 15px;
-            margin-bottom: 20px;
-            font-size: 0.85rem;
-        }
-        
-        .alert-success-custom {
-            background: #d4edda;
-            color: #155724;
-            border: none;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-        }
-        
-        .alert-success-custom i {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            display: block;
-        }
-        
-        /* Success Page Seal */
-        .success-seal {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin: 20px 0;
-            padding: 15px;
-            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
-            border-radius: 12px;
-        }
-        
-        .success-seal img {
-            width: 60px;
-            height: 60px;
-        }
-        
-        .success-seal .seal-text {
-            text-align: left;
-        }
-        
-        .success-seal .seal-text h6 {
-            margin: 0;
-            color: #1a5c3a;
-            font-weight: bold;
-        }
-        
-        .success-seal .seal-text p {
-            margin: 0;
-            font-size: 0.7rem;
-            color: #555;
-        }
-        
-        /* Footer */
-        .main-footer {
-            background: linear-gradient(135deg, #0a3d2a, #1a5c3a);
-            color: white;
-            padding: 40px 0 20px;
-            position: relative;
-            z-index: 1;
-            margin-top: 50px;
-        }
-        
-        .footer-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        
-        .footer-row {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            gap: 30px;
-        }
-        
-        .footer-col {
-            flex: 1;
-            min-width: 200px;
-        }
-        
-        .footer-col h5 {
-            font-size: 1rem;
-            margin-bottom: 15px;
-            color: #FFD700;
-        }
-        
-        .footer-col p, .footer-col li {
-            font-size: 0.8rem;
-            opacity: 0.8;
-            margin-bottom: 8px;
-        }
-        
-        .footer-col ul {
-            list-style: none;
-            padding: 0;
-        }
-        
-        .footer-col a {
-            color: white;
-            text-decoration: none;
-        }
-        
-        .footer-col a:hover {
-            color: #FFD700;
-        }
-        
-        .footer-bottom {
-            text-align: center;
-            padding-top: 20px;
-            margin-top: 20px;
-            border-top: 1px solid rgba(255,255,255,0.2);
-            font-size: 0.7rem;
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 15px;
-            flex-wrap: wrap;
-        }
-        
+        .header-container { display: flex; justify-content: flex-start; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .header-logo { display: flex; align-items: center; gap: 20px; }
+        .header-logo-img { width: 100px; height: 100px; background: white; border-radius: 50%; padding: 12px; border: 3px solid #FFD700; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .header-logo-img:hover { transform: scale(1.05); }
+        .header-title h2 { color: white; font-size: 1.8rem; margin: 0; font-weight: 800; letter-spacing: 1px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .header-title p { color: #FFD700; font-size: 0.9rem; margin: 0; font-weight: 600; letter-spacing: 0.5px; }
+        .gov-banner { background: #0d3d2a; color: #FFD700; text-align: center; padding: 8px; font-size: 0.8rem; font-weight: 500; letter-spacing: 1px; position: relative; z-index: 1001; }
+        .gov-banner i { margin-right: 8px; }
+        .register-container { width: 100%; max-width: 500px; margin: 40px auto; padding: 20px; position: relative; z-index: 1; }
+        .form-logo-section { text-align: center; margin-bottom: 30px; }
+        .form-county-logo { width: 80px; height: 80px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; padding: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); border: 2px solid #FFD700; }
+        .form-county-logo img { width: 100%; height: 100%; object-fit: contain; }
+        .form-county-name { font-size: 1.4rem; font-weight: 700; color: #1a5276; background: white; display: inline-block; padding: 5px 25px; border-radius: 40px; margin: 5px 0; }
+        .form-county-tagline { font-size: 0.75rem; color: #1a5c3a; font-weight: 600; background: rgba(255,255,255,0.9); display: inline-block; padding: 4px 15px; border-radius: 20px; }
+        .register-card { background: white; border-radius: 20px; padding: 35px 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); border: none; }
+        .welcome-title { font-size: 1.5rem; font-weight: 700; color: #1a5c3a; margin-bottom: 5px; text-align: center; }
+        .welcome-subtitle { font-size: 0.85rem; color: #666; margin-bottom: 25px; text-align: center; }
+        .input-group-custom { position: relative; margin-bottom: 20px; }
+        .input-group-custom i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #1a5c3a; font-size: 1rem; z-index: 1; }
+        .form-control-custom { width: 100%; padding: 14px 15px 14px 45px; border: 1px solid #ddd; border-radius: 12px; font-size: 0.95rem; transition: all 0.3s ease; }
+        .form-control-custom:focus { outline: none; border-color: #1a5c3a; box-shadow: 0 0 0 3px rgba(26,92,58,0.1); }
+        select.form-control-custom { appearance: none; background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%231a5c3a"><path d="M7 10l5 5 5-5z"/></svg>'); background-repeat: no-repeat; background-position: right 15px center; background-size: 20px; cursor: pointer; }
+        .amount-display { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 12px; padding: 12px 15px; text-align: center; margin-bottom: 20px; }
+        .amount-display small { font-size: 0.7rem; color: #555; display: block; }
+        .amount-display h3 { font-size: 1.6rem; font-weight: 700; color: #1a5c3a; margin: 0; }
+        .balance-display { background: #fff3cd; border-radius: 12px; padding: 12px 15px; text-align: center; margin-bottom: 20px; border-left: 4px solid #ffc107; }
+        .balance-display .balance-amount { font-size: 1.3rem; font-weight: 700; color: #856404; }
+        .btn-register { background: linear-gradient(135deg, #1a5c3a, #0d3d2a); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 600; font-size: 1rem; width: 100%; transition: all 0.3s ease; margin-top: 10px; }
+        .btn-register:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(26,92,58,0.4); color: #FFD700; }
+        .btn-download { background: linear-gradient(135deg, #28a745, #1e7e34); color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: 600; font-size: 1rem; transition: all 0.3s ease; text-decoration: none; display: inline-block; }
+        .btn-download:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(40,167,69,0.4); color: white; }
+        .btn-dashboard { background: linear-gradient(135deg, #1a5276, #2980b9); color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: 600; font-size: 1rem; transition: all 0.3s ease; text-decoration: none; display: inline-block; }
+        .btn-dashboard:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(26,82,118,0.4); color: white; }
+        .login-link { text-align: center; margin-top: 20px; font-size: 0.85rem; color: #666; }
+        .login-link a { color: #1a5c3a; text-decoration: none; font-weight: 600; }
+        .login-link a:hover { text-decoration: underline; }
+        .go-home-link { display: inline-block; margin-top: 5px; font-size: 0.75rem; }
+        .go-home-link a { color: #1a5c3a; text-decoration: none; }
+        .go-home-link a:hover { text-decoration: underline; }
+        .alert-custom { border-radius: 12px; padding: 12px 15px; margin-bottom: 20px; font-size: 0.85rem; }
+        .alert-success-custom { background: #d4edda; color: #155724; border: none; border-radius: 12px; padding: 20px; text-align: center; }
+        .alert-success-custom i { font-size: 3rem; margin-bottom: 10px; display: block; }
+        .success-seal { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 12px; }
+        .success-seal img { width: 60px; height: 60px; }
+        .success-seal .seal-text { text-align: left; }
+        .success-seal .seal-text h6 { margin: 0; color: #1a5c3a; font-weight: bold; }
+        .success-seal .seal-text p { margin: 0; font-size: 0.7rem; color: #555; }
+        .main-footer { background: linear-gradient(135deg, #0a3d2a, #1a5c3a); color: white; padding: 40px 0 20px; position: relative; z-index: 1; margin-top: 50px; }
+        .footer-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .footer-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 30px; }
+        .footer-col { flex: 1; min-width: 200px; }
+        .footer-col h5 { font-size: 1rem; margin-bottom: 15px; color: #FFD700; }
+        .footer-col p, .footer-col li { font-size: 0.8rem; opacity: 0.8; margin-bottom: 8px; }
+        .footer-col ul { list-style: none; padding: 0; }
+        .footer-col a { color: white; text-decoration: none; }
+        .footer-col a:hover { color: #FFD700; }
+        .footer-bottom { text-align: center; padding-top: 20px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); font-size: 0.7rem; }
+        .action-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 15px; flex-wrap: wrap; }
         @media (max-width: 768px) {
-            .header-logo-img {
-                width: 70px;
-                height: 70px;
-            }
-            .header-title h2 {
-                font-size: 1.3rem;
-            }
-            .header-title p {
-                font-size: 0.7rem;
-            }
-            .footer-row {
-                flex-direction: column;
-                text-align: center;
-            }
-            .register-container {
-                margin: 20px auto;
-            }
-            .register-card {
-                padding: 25px 20px;
-            }
-            .success-seal {
-                flex-direction: column;
-                text-align: center;
-            }
-            .success-seal .seal-text {
-                text-align: center;
-            }
-            .form-county-logo {
-                width: 60px;
-                height: 60px;
-            }
-            .form-county-name {
-                font-size: 1.1rem;
-            }
+            .header-logo-img { width: 70px; height: 70px; }
+            .header-title h2 { font-size: 1.3rem; }
+            .header-title p { font-size: 0.7rem; }
+            .footer-row { flex-direction: column; text-align: center; }
+            .register-container { margin: 20px auto; }
+            .register-card { padding: 25px 20px; }
+            .success-seal { flex-direction: column; text-align: center; }
+            .success-seal .seal-text { text-align: center; }
+            .form-county-logo { width: 60px; height: 60px; }
+            .form-county-name { font-size: 1.1rem; }
         }
     </style>
 </head>
 <body>
-    <!-- Header Navigation - Left Aligned with Larger Logo -->
     <header class="main-header">
         <div class="container">
             <div class="header-container">
@@ -734,15 +324,12 @@ $page_title = 'Class Registration - Makueni County Innovation Hub';
         </div>
     </header>
 
-    <!-- Government Banner -->
     <div class="gov-banner">
         <i class="fas fa-gavel"></i> Official County Government Initiative
     </div>
 
     <div class="register-container">
-        <!-- Registration Card -->
         <div class="register-card">
-            <!-- Form Logo Section -->
             <div class="form-logo-section">
                 <div class="form-county-logo">
                     <img src="/innovation_hub/assets/images/logo/makueni-logo.png" alt="Makueni County Logo" onerror="this.src='https://via.placeholder.com/80?text=MC'">
@@ -758,7 +345,6 @@ $page_title = 'Class Registration - Makueni County Innovation Hub';
                 Register for a computer class to begin your journey
             </div>
 
-            <!-- Success Message -->
             <?php if($registration_success): ?>
                 <div class="alert-success-custom">
                     <i class="fas fa-check-circle" style="color: #28a745;"></i>
@@ -784,7 +370,6 @@ $page_title = 'Class Registration - Makueni County Innovation Hub';
                         <?php endif; ?>
                     </div>
                     
-                    <!-- Makueni County Seal -->
                     <div class="success-seal">
                         <img src="assets/images/logo/seal.png" alt="Makueni County Seal" onerror="this.src='https://via.placeholder.com/60?text=SEAL'">
                         <div class="seal-text">
@@ -811,17 +396,14 @@ $page_title = 'Class Registration - Makueni County Innovation Hub';
                 </div>
             <?php endif; ?>
 
-            <!-- Error Message -->
             <?php if($error_message): ?>
                 <div class="alert alert-danger alert-custom">
                     <i class="fas fa-exclamation-triangle me-2"></i> <?php echo $error_message; ?>
                 </div>
             <?php endif; ?>
 
-            <!-- Registration Form -->
             <?php if(!$registration_success): ?>
             <form method="POST" action="" id="registrationForm">
-                <!-- Select Class -->
                 <div class="input-group-custom">
                     <i class="fas fa-laptop-code"></i>
                     <select name="class_id" class="form-control-custom" required id="classSelect">
@@ -834,61 +416,51 @@ $page_title = 'Class Registration - Makueni County Innovation Hub';
                     </select>
                 </div>
 
-                <!-- Full Name -->
                 <div class="input-group-custom">
                     <i class="fas fa-user"></i>
                     <input type="text" name="full_name" class="form-control-custom" placeholder="Full Name" required>
                 </div>
 
-                <!-- Username -->
                 <div class="input-group-custom">
                     <i class="fas fa-at"></i>
                     <input type="text" name="username" class="form-control-custom" placeholder="Username" required>
                 </div>
 
-                <!-- Email Address -->
                 <div class="input-group-custom">
                     <i class="fas fa-envelope"></i>
                     <input type="email" name="email" class="form-control-custom" placeholder="Email Address" required>
                 </div>
 
-                <!-- Phone Number -->
                 <div class="input-group-custom">
                     <i class="fas fa-phone"></i>
                     <input type="tel" name="phone" class="form-control-custom" placeholder="Phone Number" required>
                 </div>
 
-                <!-- Password -->
                 <div class="input-group-custom">
                     <i class="fas fa-lock"></i>
                     <input type="password" name="password" class="form-control-custom" placeholder="Password (min. 6 characters)" required minlength="6" id="password">
                 </div>
 
-                <!-- Confirm Password -->
                 <div class="input-group-custom">
                     <i class="fas fa-check-circle"></i>
                     <input type="password" name="confirm_password" class="form-control-custom" placeholder="Confirm Password" required id="confirmPassword">
                 </div>
 
-                <!-- Amount Paid -->
                 <div class="input-group-custom">
                     <i class="fas fa-money-bill-wave"></i>
                     <input type="number" name="amount_paid" id="amountPaid" class="form-control-custom" placeholder="Amount Paid (Min. KES 200)" min="200" step="100" required>
                 </div>
 
-                <!-- Total Fee Display -->
                 <div class="amount-display">
                     <small>Total Class Fee</small>
                     <h3 id="totalFeeDisplay">KES 0.00</h3>
                 </div>
 
-                <!-- Balance Display -->
                 <div class="balance-display" id="balanceDisplay" style="display: none;">
                     <small>Remaining Balance</small>
                     <div class="balance-amount" id="balanceAmount">KES 0.00</div>
                 </div>
 
-                <!-- Submit Button -->
                 <button type="submit" name="register_class" class="btn-register" id="submitBtn">
                     <i class="fas fa-check-circle me-2"></i> Complete Registration
                 </button>
@@ -909,7 +481,6 @@ $page_title = 'Class Registration - Makueni County Innovation Hub';
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="main-footer">
         <div class="footer-container">
             <div class="footer-row">
@@ -950,7 +521,6 @@ $page_title = 'Class Registration - Makueni County Innovation Hub';
         </div>
     </footer>
 
-    <!-- Feedback Modal -->
     <div class="modal fade" id="feedbackModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">

@@ -15,3 +15,4 @@ define('FROM_NAME', 'Makueni County Innovation Hub');
 // Site URL - USE YOUR COMPUTER'S IP ADDRESS
 define('SITE_URL', 'http://localhost/innovation_hub/');
 ?>
+rlos jzkb jehu uvru
