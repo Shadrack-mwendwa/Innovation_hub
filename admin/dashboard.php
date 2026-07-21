@@ -698,6 +698,57 @@ if(isset($_GET['action']) && $_GET['action'] == 'delete_ajiry_booking' && isset(
     exit();
 }
 
+// ========== FEEDBACK MANAGEMENT ==========
+
+// Handle Approve Feedback
+if(isset($_GET['action']) && $_GET['action'] == 'approve_feedback' && isset($_GET['id'])) {
+    $id = (int)$_GET['id'];
+    $stmt = $pdo->prepare("UPDATE feedback SET status = 'approved', updated_at = NOW() WHERE id = ?");
+    $stmt->execute([$id]);
+    $_SESSION['success_message'] = "Feedback approved successfully!";
+    header("Location: dashboard.php?view=feedback");
+    exit();
+}
+
+// Handle Delete Feedback
+if(isset($_GET['action']) && $_GET['action'] == 'delete_feedback' && isset($_GET['id'])) {
+    $id = (int)$_GET['id'];
+    $stmt = $pdo->prepare("DELETE FROM feedback WHERE id = ?");
+    $stmt->execute([$id]);
+    $_SESSION['success_message'] = "Feedback deleted successfully!";
+    header("Location: dashboard.php?view=feedback");
+    exit();
+}
+
+// ========== USER MANAGEMENT ==========
+
+// Handle Make Admin
+if(isset($_GET['action']) && $_GET['action'] == 'make_admin' && isset($_GET['id'])) {
+    $id = (int)$_GET['id'];
+    $pdo->prepare("UPDATE users SET role = 'admin' WHERE id = ?")->execute([$id]);
+    $_SESSION['success_message'] = "User promoted to Admin!";
+    header("Location: dashboard.php?view=users");
+    exit();
+}
+
+// Handle Remove Admin
+if(isset($_GET['action']) && $_GET['action'] == 'remove_admin' && isset($_GET['id'])) {
+    $id = (int)$_GET['id'];
+    $pdo->prepare("UPDATE users SET role = 'user' WHERE id = ?")->execute([$id]);
+    $_SESSION['success_message'] = "Admin privileges removed!";
+    header("Location: dashboard.php?view=users");
+    exit();
+}
+
+// Handle Delete User
+if(isset($_GET['action']) && $_GET['action'] == 'delete_user' && isset($_GET['id'])) {
+    $id = (int)$_GET['id'];
+    $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
+    $_SESSION['success_message'] = "User deleted successfully!";
+    header("Location: dashboard.php?view=users");
+    exit();
+}
+
 // ========== GET STATISTICS ==========
 
 // News Statistics
@@ -758,7 +809,7 @@ $class_registrations = $pdo->query("
     ORDER BY r.created_at DESC
 ")->fetchAll();
 
-// Graduates with certificate details - FIXED QUERY
+// Graduates with certificate details
 $graduates = $pdo->query("
     SELECT cr.*, c.class_name, cert.certificate_number, cert.issue_date, cert.completion_date
     FROM class_registrations cr
@@ -1456,7 +1507,7 @@ $mentors_list = $pdo->query("SELECT m.*, u.full_name, u.email FROM mentors m JOI
                     </div>
                 </div>
                 
-                <!-- TAB 4: GRADUATES - UPDATED -->
+                <!-- TAB 4: GRADUATES -->
                 <div class="tab-pane fade" id="graduatesManage">
                     <div class="table-responsive">
                         <table class="table-custom">
@@ -1658,19 +1709,17 @@ $mentors_list = $pdo->query("SELECT m.*, u.full_name, u.email FROM mentors m JOI
             .then(response => response.json())
             .then(data => {
                 if(data.success) {
-                    // Close certificate modal
                     bootstrap.Modal.getInstance(document.getElementById('certificateModal')).hide();
-                    // Show notification modal
                     showNotificationModal(
                         data.student_name,
                         data.course_name,
                         data.certificate_number
                     );
                 } else {
-                    alert('❌ Error: ' + data.message);
+                    alert(' Error: ' + data.message);
                 }
             })
-            .catch(error => alert('❌ Error: ' + error));
+            .catch(error => alert(' Error: ' + error));
         }
 
         function showNotificationModal(name, course, certNumber) {
@@ -1689,8 +1738,7 @@ $mentors_list = $pdo->query("SELECT m.*, u.full_name, u.email FROM mentors m JOI
         }
 
         function sendNotification() {
-            // In production, this would send actual email/SMS
-            alert('✅ Notification sent successfully!\n\n' + 
+            alert('Notification sent successfully!\n\n' + 
                   'Student: ' + currentNotifData.name + '\n' +
                   'Course: ' + currentNotifData.course + '\n' +
                   'Certificate: ' + currentNotifData.certNumber + '\n\n' +
@@ -1719,20 +1767,217 @@ $mentors_list = $pdo->query("SELECT m.*, u.full_name, u.email FROM mentors m JOI
         </div>
         <?php endif; ?>
 
-        <!-- OTHER VIEWS -->
+        <!-- ==================== USER MANAGEMENT ==================== -->
         <?php if($current_view == 'users'): ?>
-        <div class="detail-view"><button class="back-btn" onclick="window.location.href='dashboard.php'"><i class="fas fa-arrow-left me-2"></i> Back</button><h3 class="section-title"><i class="fas fa-users me-2"></i>Manage Users</h3>
-        <table class="table-custom"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Actions</th></tr></thead><tbody><?php foreach($all_users as $user): ?><tr><td><?php echo htmlspecialchars($user['full_name']); ?></td><td><?php echo htmlspecialchars($user['email']); ?></td><td><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></td><td><span class="status-badge <?php echo $user['role'] == 'admin' ? 'status-confirmed' : 'status-pending'; ?>"><?php echo ucfirst($user['role']); ?></span></td><td><?php if($user['role'] == 'user'): ?><a href="?view=users&action=make_admin&id=<?php echo $user['id']; ?>" class="btn btn-sm btn-primary">Make Admin</a><?php elseif($user['id'] != $_SESSION['user_id']): ?><a href="?view=users&action=remove_admin&id=<?php echo $user['id']; ?>" class="btn btn-sm btn-warning">Remove Admin</a><?php endif; ?><?php if($user['id'] != $_SESSION['user_id']): ?><a href="?view=users&action=delete_user&id=<?php echo $user['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete user?')">Delete</a><?php endif; ?></td></tr><?php endforeach; ?></tbody></table></div>
+        <div class="detail-view">
+            <button class="back-btn" onclick="window.location.href='dashboard.php'"><i class="fas fa-arrow-left me-2"></i> Back</button>
+            <h3 class="section-title"><i class="fas fa-users me-2"></i>Manage Users</h3>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        <?php foreach($all_users as $user): ?>
+                        <tr>
+                            <td><strong><?php echo htmlspecialchars($user['full_name']); ?></strong></td>
+                            <td><?php echo htmlspecialchars($user['email']); ?></td>
+                            <td><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></td>
+                            <td><span class="status-badge <?php echo $user['role'] == 'admin' ? 'status-confirmed' : 'status-pending'; ?>"><?php echo ucfirst($user['role']); ?></span></td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <?php if($user['role'] == 'user'): ?>
+                                        <a href="?view=users&action=make_admin&id=<?php echo $user['id']; ?>" class="btn btn-sm btn-primary btn-action">Make Admin</a>
+                                    <?php elseif($user['id'] != $_SESSION['user_id']): ?>
+                                        <a href="?view=users&action=remove_admin&id=<?php echo $user['id']; ?>" class="btn btn-sm btn-warning btn-action">Remove Admin</a>
+                                    <?php endif; ?>
+                                    <?php if($user['id'] != $_SESSION['user_id']): ?>
+                                        <a href="?view=users&action=delete_user&id=<?php echo $user['id']; ?>" class="btn btn-sm btn-danger btn-action" onclick="return confirm('Delete this user?')">Delete</a>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
         <?php endif; ?>
 
+        <!-- ==================== FEEDBACK MANAGEMENT ==================== -->
         <?php if($current_view == 'feedback'): ?>
-        <div class="detail-view"><button class="back-btn" onclick="window.location.href='dashboard.php'"><i class="fas fa-arrow-left me-2"></i> Back</button><h3 class="section-title"><i class="fas fa-comment me-2"></i>User Feedback</h3>
-        <table class="table-custom"><thead><tr><th>Name</th><th>Message</th><th>Rating</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody><?php foreach($all_feedback as $fb): ?><tr><td><?php echo htmlspecialchars($fb['full_name']); ?></td><td><?php echo htmlspecialchars(substr($fb['message'], 0, 60)); ?>...</td><td><?php for($i=1;$i<=5;$i++) echo $i<=$fb['rating'] ? '★' : '☆'; ?></td><td><?php echo date('M d, Y', strtotime($fb['created_at'])); ?></td><td><span class="status-badge <?php echo $fb['status'] == 'approved' ? 'status-confirmed' : 'status-pending'; ?>"><?php echo ucfirst($fb['status']); ?></span></td><td><?php if($fb['status'] == 'pending'): ?><a href="?view=feedback&action=approve_feedback&id=<?php echo $fb['id']; ?>" class="btn btn-sm btn-success">Approve</a><?php endif; ?><a href="?view=feedback&action=delete_feedback&id=<?php echo $fb['id']; ?>" class="btn btn-sm btn-danger">Delete</a></td></tr><?php endforeach; ?></tbody></table></div>
+        <div class="detail-view">
+            <button class="back-btn" onclick="window.location.href='dashboard.php'"><i class="fas fa-arrow-left me-2"></i> Back to Dashboard</button>
+            
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <h3 class="section-title"><i class="fas fa-comment me-2"></i>User Feedback</h3>
+                <div>
+                    <span class="badge bg-warning text-dark me-2">Pending: <?php echo $pending_feedback; ?></span>
+                    <span class="badge bg-success">Approved: <?php echo $total_feedback - $pending_feedback; ?></span>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Message</th>
+                            <th>Rating</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($all_feedback as $fb): ?>
+                        <tr>
+                            <td><?php echo $fb['id']; ?></td>
+                            <td><strong><?php echo htmlspecialchars($fb['full_name']); ?></strong></td>
+                            <td><?php echo htmlspecialchars($fb['phone']); ?></td>
+                            <td style="max-width: 200px;">
+                                <?php echo htmlspecialchars(substr($fb['message'], 0, 60)); ?>
+                                <?php if(strlen($fb['message']) > 60): ?>...<?php endif; ?>
+                                <button class="btn btn-sm btn-link p-0" data-bs-toggle="modal" data-bs-target="#viewFeedbackModal<?php echo $fb['id']; ?>">
+                                    <i class="fas fa-eye text-primary"></i>
+                                </button>
+                            </td>
+                            <td>
+                                <?php for($i=1; $i<=5; $i++): ?>
+                                    <?php if($i <= $fb['rating']): ?>
+                                        <i class="fas fa-star text-warning" style="font-size: 14px;"></i>
+                                    <?php else: ?>
+                                        <i class="far fa-star text-secondary" style="font-size: 14px;"></i>
+                                    <?php endif; ?>
+                                <?php endfor; ?>
+                                <span class="text-muted small">(<?php echo $fb['rating']; ?>)</span>
+                            </td>
+                            <td><small><?php echo date('M d, Y', strtotime($fb['created_at'])); ?></small></td>
+                            <td>
+                                <?php if($fb['status'] == 'approved'): ?>
+                                    <span class="status-badge status-confirmed"> Approved</span>
+                                <?php else: ?>
+                                    <span class="status-badge status-pending">⏳ Pending</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <?php if($fb['status'] == 'pending'): ?>
+                                        <a href="?view=feedback&action=approve_feedback&id=<?php echo $fb['id']; ?>" 
+                                           class="btn btn-sm btn-success btn-action" 
+                                           onclick="return confirm('Approve this feedback?')">
+                                            <i class="fas fa-check"></i> Approve
+                                        </a>
+                                    <?php endif; ?>
+                                    <button class="btn btn-sm btn-info btn-action" data-bs-toggle="modal" data-bs-target="#viewFeedbackModal<?php echo $fb['id']; ?>">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    <a href="?view=feedback&action=delete_feedback&id=<?php echo $fb['id']; ?>" 
+                                       class="btn btn-sm btn-danger btn-action" 
+                                       onclick="return confirm('Delete this feedback? This action cannot be undone.')">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <!-- View Feedback Modal -->
+                        <div class="modal fade" id="viewFeedbackModal<?php echo $fb['id']; ?>" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header" style="background: linear-gradient(135deg, #1a5c3a, #0a3d2a); color: white;">
+                                        <h5 class="modal-title"><i class="fas fa-comment me-2"></i>Feedback Details</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>Name:</strong> <?php echo htmlspecialchars($fb['full_name']); ?></p>
+                                                <p><strong>Phone:</strong> <?php echo htmlspecialchars($fb['phone']); ?></p>
+                                                <p><strong>ID Number:</strong> <?php echo htmlspecialchars($fb['id_number'] ?? 'N/A'); ?></p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>Rating:</strong> 
+                                                    <?php for($i=1; $i<=5; $i++): ?>
+                                                        <?php if($i <= $fb['rating']): ?>
+                                                            <i class="fas fa-star text-warning"></i>
+                                                        <?php else: ?>
+                                                            <i class="far fa-star text-secondary"></i>
+                                                        <?php endif; ?>
+                                                    <?php endfor; ?>
+                                                    <span class="text-muted">(<?php echo $fb['rating']; ?>/5)</span>
+                                                </p>
+                                                <p><strong>Status:</strong> 
+                                                    <?php if($fb['status'] == 'approved'): ?>
+                                                        <span class="badge bg-success">Approved</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-warning text-dark">Pending</span>
+                                                    <?php endif; ?>
+                                                </p>
+                                                <p><strong>Submitted:</strong> <?php echo date('F d, Y h:i A', strtotime($fb['created_at'])); ?></p>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <h6><strong>Feedback Message:</strong></h6>
+                                        <div class="p-3 bg-light rounded" style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
+                                            <?php echo nl2br(htmlspecialchars($fb['message'])); ?>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <?php if($fb['status'] == 'pending'): ?>
+                                            <a href="?view=feedback&action=approve_feedback&id=<?php echo $fb['id']; ?>" class="btn btn-success">
+                                                <i class="fas fa-check me-1"></i> Approve
+                                            </a>
+                                        <?php endif; ?>
+                                        <a href="?view=feedback&action=delete_feedback&id=<?php echo $fb['id']; ?>" class="btn btn-danger" 
+                                           onclick="return confirm('Delete this feedback?')">
+                                            <i class="fas fa-trash me-1"></i> Delete
+                                        </a>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php if(empty($all_feedback)): ?>
+                        <tr><td colspan="8" class="text-center py-4">
+                            <i class="fas fa-inbox fa-2x d-block text-muted mb-2"></i>
+                            No feedback submissions yet.
+                        </td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
         <?php endif; ?>
 
+        <!-- ==================== MENTORS MANAGEMENT ==================== -->
         <?php if($current_view == 'mentors'): ?>
-        <div class="detail-view"><button class="back-btn" onclick="window.location.href='dashboard.php'"><i class="fas fa-arrow-left me-2"></i> Back</button><h3 class="section-title"><i class="fas fa-user-tie me-2"></i>Mentors</h3>
-        <table class="table-custom"><thead><tr><th>Name</th><th>Email</th><th>Expertise</th><th>Experience</th><th>Status</th><th>Action</th></tr></thead><tbody><?php foreach($mentors_list as $mentor): ?><td><td><?php echo htmlspecialchars($mentor['full_name']); ?></td><td><?php echo htmlspecialchars($mentor['email']); ?></td><td><?php echo htmlspecialchars(substr($mentor['expertise'] ?? '', 0, 40)); ?></td><td><?php echo $mentor['years_experience'] ?? 0; ?> yrs</td><td><span class="status-badge <?php echo ($mentor['is_verified'] ?? 0) ? 'status-confirmed' : 'status-pending'; ?>"><?php echo ($mentor['is_verified'] ?? 0) ? 'Verified' : 'Pending'; ?></span></td><td><a href="edit-mentor.php?id=<?php echo $mentor['id']; ?>" class="btn btn-sm btn-primary">Edit</a></td></tr><?php endforeach; ?></tbody></table></div>
+        <div class="detail-view">
+            <button class="back-btn" onclick="window.location.href='dashboard.php'"><i class="fas fa-arrow-left me-2"></i> Back</button>
+            <h3 class="section-title"><i class="fas fa-user-tie me-2"></i>Mentors</h3>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead><tr><th>Name</th><th>Email</th><th>Expertise</th><th>Experience</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody>
+                        <?php foreach($mentors_list as $mentor): ?>
+                        <tr>
+                            <td><strong><?php echo htmlspecialchars($mentor['full_name']); ?></strong></td>
+                            <td><?php echo htmlspecialchars($mentor['email']); ?></td>
+                            <td><?php echo htmlspecialchars(substr($mentor['expertise'] ?? '', 0, 40)); ?></td>
+                            <td><?php echo $mentor['years_experience'] ?? 0; ?> yrs</td>
+                            <td>
+                                <span class="status-badge <?php echo ($mentor['is_verified'] ?? 0) ? 'status-confirmed' : 'status-pending'; ?>">
+                                    <?php echo ($mentor['is_verified'] ?? 0) ? 'Verified' : 'Pending'; ?>
+                                </span>
+                            </td>
+                            <td><a href="edit-mentor.php?id=<?php echo $mentor['id']; ?>" class="btn btn-sm btn-primary btn-action">Edit</a></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
         <?php endif; ?>
     </div>
 

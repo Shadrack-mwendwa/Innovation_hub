@@ -517,7 +517,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="footer-section">
                 <h5>AJIRY Services</h5>
                 <p><a href="/innovation_hub/ajiry/studio_book.php">Book Studio</a></p>
-                <p><a href="/innovation_hub/ajiry/check-booking.php">Check Booking</a></p>
+                <p><a href="/innovation_hub/ajiry/check_booking_status.php">Check Booking</a></p>
             </div>
         </div>
         <div class="footer-bottom">

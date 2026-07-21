@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 session_start();
 
 require_once '../config/database.php';
+require_once '../includes/send_email.php';
 
 // Handle form submission
 if($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -43,68 +44,129 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $services, $preferred_date, $additional_info
             ]);
             
-            // Send email confirmation
-            $to = $email;
+            // Send email confirmation with HTML
             $subject = "AJIRY Studio Booking Confirmation - " . $booking_code;
-            $message = "Dear " . $full_name . ",\n\n";
-            $message .= "Thank you for booking AJIRY Studio!\n\n";
-            $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            $message .= "YOUR BOOKING DETAILS\n";
-            $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
-            $message .= "Booking Code: " . $booking_code . "\n";
-            $message .= "Full Name: " . $full_name . "\n";
-            $message .= "ID Number: " . $id_number . "\n";
-            $message .= "Phone: " . $phone_number . "\n";
-            $message .= "Selected Services: " . $services . "\n";
-            $message .= "Preferred Date: " . date('l, F d, Y', strtotime($preferred_date)) . "\n\n";
             
-            $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            $message .= "IMPORTANT INFORMATION\n";
-            $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
-            $message .= "• Maximum 3 people TOTAL per session (including staff)\n";
-            $message .= "• Session duration: 2 hours\n";
-            $message .= "• Please arrive 15 minutes early\n";
-            $message .= "• Valid ID required for entry\n";
-            $message .= "• FREE booking - No payment required\n";
-            $message .= "• Cancellation requires 24 hours notice\n\n";
+            $message = "
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #1a5c3a; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 20px; background: #f9f9f9; }
+                    .booking-code { background: #e8f5e9; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; color: #1a5c3a; border-radius: 8px; margin: 15px 0; letter-spacing: 2px; }
+                    .details-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+                    .details-table td { padding: 10px; border-bottom: 1px solid #ddd; }
+                    .details-table td:first-child { font-weight: bold; width: 40%; }
+                    .rules { background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 15px 0; }
+                    .footer { font-size: 12px; color: #666; text-align: center; padding: 15px; }
+                    .copy-btn { background: #1a5c3a; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; }
+                    .copy-btn:hover { background: #0a3d2a; }
+                </style>
+            </head>
+            <body>
+                <div class='container'>
+                    <div class='header'>
+                        <h2>🎙️ AJIRY STUDIO</h2>
+                        <p>Makueni County Innovation Hub</p>
+                    </div>
+                    <div class='content'>
+                        <h3>Booking Confirmation</h3>
+                        <p>Dear <strong>" . htmlspecialchars($full_name) . "</strong>,</p>
+                        <p>Thank you for booking AJIRY Studio! Your booking has been received and is pending confirmation.</p>
+                        
+                        <div class='booking-code'>
+                            📋 " . $booking_code . "
+                            <br>
+                            <button class='copy-btn' onclick=\"navigator.clipboard.writeText('" . $booking_code . "')\">📋 Copy Code</button>
+                        </div>
+                        
+                        <h4>Booking Details:</h4>
+                        <table class='details-table'>
+                            <tr><td>Booking Code</td><td><strong>" . $booking_code . "</strong></td></tr>
+                            <tr><td>Full Name</td><td>" . htmlspecialchars($full_name) . "</td></tr>
+                            <tr><td>ID Number</td><td>" . htmlspecialchars($id_number) . "</td></tr>
+                            <tr><td>Phone Number</td><td>" . htmlspecialchars($phone_number) . "</td></tr>
+                            <tr><td>Email</td><td>" . htmlspecialchars($email) . "</td></tr>
+                            <tr><td>Services</td><td>" . htmlspecialchars($services) . "</td></tr>
+                            <tr><td>Preferred Date</td><td>" . date('l, F d, Y', strtotime($preferred_date)) . "</td></tr>
+                            <tr><td>Status</td><td><span style='color: #ffc107; font-weight: bold;'>⏳ Pending Confirmation</span></td></tr>
+                        </table>
+                        
+                        <div class='rules'>
+                            <h4>📋 Important Information</h4>
+                            <ul>
+                                <li>Maximum 3 people TOTAL per session (including staff)</li>
+                                <li>Session duration: 2 hours</li>
+                                <li>Please arrive 15 minutes early</li>
+                                <li>Valid ID required for entry</li>
+                                <li>FREE booking - No payment required</li>
+                                <li>Cancellation requires 24 hours notice</li>
+                            </ul>
+                        </div>
+                        
+                        <div class='rules' style='background: #e3f2fd; border-left-color: #2196f3;'>
+                            <h4>📌 Studio Rules</h4>
+                            <ul>
+                                <li>✓ Monday to Friday only</li>
+                                <li>✓ Max 3 people TOTAL per session</li>
+                                <li>✓ Session duration: 2 hours</li>
+                                <li>✓ FREE Booking - No payment required</li>
+                                <li>✓ Valid ID required</li>
+                                <li>✓ Arrive 15 minutes early</li>
+                                <li>✓ Cancellation: 24hrs notice</li>
+                            </ul>
+                        </div>
+                        
+                        <div class='rules' style='background: #e8f5e9; border-left-color: #4caf50;'>
+                            <h4>🎯 What to Bring</h4>
+                            <ul>
+                                <li>Valid National ID or Passport</li>
+                                <li>Your booking code: <strong>" . $booking_code . "</strong></li>
+                                <li>Any materials you need for your session</li>
+                            </ul>
+                        </div>
+                        
+                        <p>We will contact you within 24 hours to confirm your booking.</p>
+                        <p>Use your booking code to check status: <strong>" . $booking_code . "</strong></p>
+                        
+                        <p style='margin-top: 20px;'>
+                            Best regards,<br>
+                            <strong>AJIRY Studio Team</strong><br>
+                            Makueni County Innovation Hub<br>
+                            Email: info@makueni.go.ke | Phone: 0795717885
+                        </p>
+                    </div>
+                    <div class='footer'>
+                        <p>&copy; " . date('Y') . " Makueni County Innovation Hub. All rights reserved.</p>
+                        <p>This is an automated confirmation, please do not reply directly to this email.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            ";
             
-            $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            $message .= "STUDIO RULES\n";
-            $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
-            $message .= "✓ Monday to Friday only\n";
-            $message .= "✓ Max 3 people TOTAL per session\n";
-            $message .= "✓ Session duration: 2 hours\n";
-            $message .= "✓ FREE Booking - No payment required\n";
-            $message .= "✓ Valid ID required\n";
-            $message .= "✓ Arrive 15 minutes early\n";
-            $message .= "✓ Cancellation: 24hrs notice\n\n";
+            $headers = "MIME-Version: 1.0" . "\r\n";
+            $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+            $headers .= "From: AJIRY Studio <bookings@makueniinnovationhub.co.ke>" . "\r\n";
+            $headers .= "Reply-To: info@makueni.go.ke" . "\r\n";
+            $headers .= "X-Priority: 1" . "\r\n";
             
-            $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            $message .= "WHAT TO BRING\n";
-            $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
-            $message .= "• Valid National ID or Passport\n";
-            $message .= "• Your booking code: " . $booking_code . "\n";
-            $message .= "• Any materials you need for your session\n\n";
+            mail($email, $subject, $message, $headers);
             
-            $message .= "We will contact you within 24 hours to confirm your booking.\n\n";
-            $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            $message .= "NEED TO CHECK YOUR STATUS?\n";
-            $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
-            $message .= "Use your booking code: " . $booking_code . "\n\n";
+            // Store booking data in session for success page
+            $_SESSION['booking_data'] = [
+                'booking_code' => $booking_code,
+                'full_name' => $full_name,
+                'email' => $email,
+                'phone' => $phone_number,
+                'services' => $services,
+                'preferred_date' => $preferred_date,
+                'id_number' => $id_number
+            ];
             
-            $message .= "Best regards,\n";
-            $message .= "AJIRY Studio Team\n";
-            $message .= "Makueni County Innovation Hub\n";
-            $message .= "Email: info@makueni.go.ke | Phone: 0795717885";
-            
-            $headers = "From: AJIRY Studio <bookings@makueniinnovationhub.co.ke>\r\n";
-            $headers .= "Reply-To: info@makueni.go.ke\r\n";
-            $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-            $headers .= "X-Priority: 1\r\n";
-            
-            mail($to, $subject, $message, $headers);
-            
-            $_SESSION['booking_success'] = "Booking submitted successfully! Check your email for confirmation. Your booking code is: " . $booking_code;
+            $_SESSION['booking_success'] = true;
             header("Location: studio_book.php");
             exit();
             
@@ -115,7 +177,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     if(!empty($errors)) {
         $_SESSION['booking_errors'] = $errors;
-        $_SESSION['booking_data'] = $_POST;
+        $_SESSION['booking_form_data'] = $_POST;
         header("Location: studio_book.php");
         exit();
     }
@@ -135,6 +197,13 @@ while($count < 14) {
 }
 
 $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($available_dates[0])) : 'Check back soon';
+
+// Check if booking was just created
+$show_success = isset($_SESSION['booking_success']) && $_SESSION['booking_success'] === true;
+$booking_details = $_SESSION['booking_data'] ?? null;
+if($show_success) {
+    unset($_SESSION['booking_success']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -232,6 +301,42 @@ $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($avai
             transform: translateY(-2px);
         }
         
+        .btn-copy {
+            background: #28a745;
+            color: white;
+            border-radius: 50px;
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-copy:hover {
+            background: #1e7e34;
+            transform: translateY(-2px);
+        }
+        
+        .btn-dashboard {
+            background: #17a2b8;
+            color: white;
+            border-radius: 50px;
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-dashboard:hover {
+            background: #138496;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
         .info-card {
             background: #e8f5e9;
             border-radius: 16px;
@@ -289,6 +394,22 @@ $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($avai
             margin-top: 5px;
         }
         
+        .success-code-box {
+            background: #e8f5e9;
+            border: 2px dashed #28a745;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .success-code-box .booking-code {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a5c3a;
+            letter-spacing: 3px;
+            word-break: break-all;
+        }
+        
         footer { background: #0d3d2a; color: white; padding: 30px 0 15px; margin-top: 50px; }
         footer a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.8rem; }
         footer a:hover { color: #FFD700; }
@@ -296,6 +417,7 @@ $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($avai
         @media (max-width: 768px) {
             .county-logo { height: 45px; width: 45px; }
             .booking-card-body { padding: 20px; }
+            .success-code-box .booking-code { font-size: 24px; }
         }
     </style>
 </head>
@@ -318,8 +440,6 @@ $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($avai
                     <?php if(isset($_SESSION['user_id'])): ?>
                         <li class="nav-item"><a class="nav-link" href="../user/dashboard.php">Dashboard</a></li>
                         <li class="nav-item"><a class="nav-link" href="../logout.php">Logout</a></li>
-                    <?php else: ?>
-                        
                     <?php endif; ?>
                 </ul>
             </div>
@@ -334,14 +454,7 @@ $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($avai
     </div>
 
     <div class="container">
-        <!-- Success/Error Messages -->
-        <?php if(isset($_SESSION['booking_success'])): ?>
-            <div class="alert alert-success alert-dismissible fade show">
-                <i class="fas fa-check-circle me-2"></i> <?php echo $_SESSION['booking_success']; unset($_SESSION['booking_success']); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        <?php endif; ?>
-        
+        <!-- Error Messages -->
         <?php if(isset($_SESSION['booking_errors'])): ?>
             <div class="alert alert-danger alert-dismissible fade show">
                 <i class="fas fa-exclamation-circle me-2"></i> Please fix the following errors:
@@ -353,6 +466,35 @@ $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($avai
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             <?php unset($_SESSION['booking_errors']); ?>
+        <?php endif; ?>
+        
+        <!-- Success Message with Booking Code -->
+        <?php if($show_success && $booking_details): ?>
+            <div class="alert alert-success alert-dismissible fade show">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <h4 class="mb-2"><i class="fas fa-check-circle me-2"></i>Booking Submitted Successfully!</h4>
+                        <p class="mb-2">An email confirmation has been sent to <strong><?php echo htmlspecialchars($booking_details['email']); ?></strong></p>
+                        
+                        <div class="success-code-box">
+                            <p class="mb-1"><i class="fas fa-qrcode me-2"></i>Your Booking Code:</p>
+                            <div class="booking-code" id="bookingCode"><?php echo htmlspecialchars($booking_details['booking_code']); ?></div>
+                            <div class="mt-3">
+                                <button class="btn-copy" onclick="copyBookingCode()">
+                                    <i class="fas fa-copy me-2"></i> Copy Code
+                                </button>
+                                <a href="check_booking_status.php?code=<?php echo urlencode($booking_details['booking_code']); ?>" class="btn-dashboard ms-2">
+                                    <i class="fas fa-search me-2"></i> Check Status
+                                </a>
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted"><i class="fas fa-info-circle me-1"></i> Copy your booking code to check status anytime</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         <?php endif; ?>
         
         <div class="row">
@@ -382,19 +524,19 @@ $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($avai
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Full Name *</label>
-                                    <input type="text" name="full_name" class="form-control" value="<?php echo htmlspecialchars($_SESSION['booking_data']['full_name'] ?? ''); ?>" required>
+                                    <input type="text" name="full_name" class="form-control" value="<?php echo htmlspecialchars($_SESSION['booking_form_data']['full_name'] ?? ''); ?>" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">ID Number *</label>
-                                    <input type="text" name="id_number" class="form-control" value="<?php echo htmlspecialchars($_SESSION['booking_data']['id_number'] ?? ''); ?>" required>
+                                    <input type="text" name="id_number" class="form-control" value="<?php echo htmlspecialchars($_SESSION['booking_form_data']['id_number'] ?? ''); ?>" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Phone Number *</label>
-                                    <input type="tel" name="phone_number" class="form-control" value="<?php echo htmlspecialchars($_SESSION['booking_data']['phone_number'] ?? ''); ?>" required>
+                                    <input type="tel" name="phone_number" class="form-control" value="<?php echo htmlspecialchars($_SESSION['booking_form_data']['phone_number'] ?? ''); ?>" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Email Address *</label>
-                                    <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($_SESSION['booking_data']['email'] ?? ''); ?>" required>
+                                    <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($_SESSION['booking_form_data']['email'] ?? ''); ?>" required>
                                     <div class="email-required-note">
                                         <small><i class="fas fa-envelope me-1"></i> Required for booking confirmation</small>
                                     </div>
@@ -414,7 +556,7 @@ $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($avai
                                         'Mixing & Mastering' => '🎧',
                                         'Other' => '📝'
                                     ];
-                                    $selected_services = $_SESSION['booking_data']['services'] ?? [];
+                                    $selected_services = $_SESSION['booking_form_data']['services'] ?? [];
                                     foreach($services_list as $service => $icon):
                                     ?>
                                     <div class="col-md-4">
@@ -435,7 +577,7 @@ $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($avai
                                     <select name="preferred_date" class="form-select" required>
                                         <option value="">Select preferred date</option>
                                         <?php foreach($available_dates as $date): ?>
-                                        <option value="<?php echo $date; ?>" <?php echo (($_SESSION['booking_data']['preferred_date'] ?? '') == $date) ? 'selected' : ''; ?>>
+                                        <option value="<?php echo $date; ?>" <?php echo (($_SESSION['booking_form_data']['preferred_date'] ?? '') == $date) ? 'selected' : ''; ?>>
                                             <?php echo date('l, F d, Y', strtotime($date)); ?>
                                         </option>
                                         <?php endforeach; ?>
@@ -444,7 +586,7 @@ $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($avai
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Additional Information</label>
-                                    <textarea name="additional_info" class="form-control" rows="3" placeholder="Any special requests or additional information"><?php echo htmlspecialchars($_SESSION['booking_data']['additional_info'] ?? ''); ?></textarea>
+                                    <textarea name="additional_info" class="form-control" rows="3" placeholder="Any special requests or additional information"><?php echo htmlspecialchars($_SESSION['booking_form_data']['additional_info'] ?? ''); ?></textarea>
                                 </div>
                             </div>
                             
@@ -542,5 +684,52 @@ $next_available = isset($available_dates[0]) ? date('l, F d, Y', strtotime($avai
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function copyBookingCode() {
+            const codeElement = document.getElementById('bookingCode');
+            const code = codeElement.textContent;
+            
+            // Use the Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code).then(function() {
+                    // Show success feedback
+                    const btn = document.querySelector('.btn-copy');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check me-2"></i> Copied!';
+                    btn.style.background = '#28a745';
+                    setTimeout(function() {
+                        btn.innerHTML = originalText;
+                        btn.style.background = '#28a745';
+                    }, 2000);
+                }).catch(function(err) {
+                    // Fallback - select and copy
+                    selectAndCopy(code);
+                });
+            } else {
+                // Fallback for older browsers
+                selectAndCopy(code);
+            }
+        }
+        
+        function selectAndCopy(text) {
+            // Create a temporary input element
+            const input = document.createElement('input');
+            input.value = text;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            
+            // Show feedback
+            const btn = document.querySelector('.btn-copy');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check me-2"></i> Copied!';
+            btn.style.background = '#28a745';
+            setTimeout(function() {
+                btn.innerHTML = originalText;
+                btn.style.background = '#28a745';
+            }, 2000);
+        }
+    </script>
 </body>
 </html>

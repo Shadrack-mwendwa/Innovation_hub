@@ -32,9 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 // Send email
                 if (sendPasswordResetEmail($user['email'], $user['full_name'], $reset_link)) {
-                    $success = "✅ Password reset link has been sent to your email address. Please check your inbox (and spam folder).";
+                    $success = "Password reset link has been sent to your email address. Please check your inbox (and spam folder).";
                 } else {
-                    $error = "❌ Failed to send email. Please try again later or contact support.";
+                    $error = "Failed to send email. Please try again later or contact support.";
                 }
             } else {
                 $success = "If your email is registered, you will receive a password reset link.";

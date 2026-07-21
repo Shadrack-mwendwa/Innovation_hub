@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $valid_token) {
             ");
             $stmt->execute([$hashed_password, $user_id]);
             
-            $success = "✅ Password reset successfully! You can now login.";
+            $success = "Password reset successfully! You can now login.";
             $valid_token = false;
         } catch(PDOException $e) {
             $error = "Failed to reset password. Please try again.";
