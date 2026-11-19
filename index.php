@@ -1359,8 +1359,8 @@ $hero_backgrounds = [
                     <h6 class="fw-bold">Contact Information</h6>
                     <ul class="list-unstyled">
                         <li class="mb-2"><i class="fas fa-map-marker-alt me-2 text-warning"></i> P.O. Box 78 – 90-300 Wote, Makueni</li>
-                        <li class="mb-2"><i class="fas fa-phone me-2 text-warning"></i> 0795717885</li>
-                        <li class="mb-2"><i class="fas fa-mobile-alt me-2 text-warning"></i> 0780717885</li>
+                        <li class="mb-2"><i class="fas fa-phone me-2 text-warning"></i> 0792953121</li>
+                        <li class="mb-2"><i class="fas fa-mobile-alt me-2 text-warning"></i> 0703125815</li>
                         <li class="mb-2"><i class="fas fa-envelope me-2 text-warning"></i> info@makueni.go.ke</li>
                     </ul>
                 </div>
@@ -1368,7 +1368,7 @@ $hero_backgrounds = [
             <hr class="bg-white opacity-25 my-3">
             <div class="text-center small">
                 <p>&copy; <?php echo date('Y'); ?> County Government of Makueni. All rights reserved.</p>
-                <p class="mt-1">Empowering Innovators, Transforming Lives | Wote, Makueni County</p>
+                <p class="mt-1">Empowering Innovators, Transforming Lives | Wote,Green Park, Makueni County</p>
             </div>
         </div>
     </footer>
