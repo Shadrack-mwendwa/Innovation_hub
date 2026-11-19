@@ -510,8 +510,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="footer-section">
                 <h5>Contact Information</h5>
                 <p><i class="fas fa-map-marker-alt me-2 text-warning"></i> P.O. Box 78 – 90-300 Wote, Makueni</p>
-                <p><i class="fas fa-phone me-2 text-warning"></i> 0795717885</p>
-                <p><i class="fas fa-mobile-alt me-2 text-warning"></i> 0780717885</p>
+                <p><i class="fas fa-phone me-2 text-warning"></i> 0792953121</p>
+                <p><i class="fas fa-mobile-alt me-2 text-warning"></i> 0703125815</p>
                 <p><i class="fas fa-envelope me-2 text-warning"></i> info@makueni.go.ke</p>
             </div>
             <div class="footer-section">
