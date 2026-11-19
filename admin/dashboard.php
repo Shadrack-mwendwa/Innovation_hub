@@ -1857,7 +1857,7 @@ $mentors_list = $pdo->query("SELECT m.*, u.full_name, u.email FROM mentors m JOI
                                 <?php if($fb['status'] == 'approved'): ?>
                                     <span class="status-badge status-confirmed"> Approved</span>
                                 <?php else: ?>
-                                    <span class="status-badge status-pending">⏳ Pending</span>
+                                    <span class="status-badge status-pending"> Pending</span>
                                 <?php endif; ?>
                             </td>
                             <td>
