@@ -368,11 +368,11 @@ $page_title = 'News - Makueni County Innovation Hub';
             <div class="row">
                 <div class="col-md-6">
                     <h6 class="fw-bold">Makueni County Innovation Hub</h6>
-                    <p class="small opacity-75">Empowering innovators, entrepreneurs, and tech enthusiasts.</p>
+                    <p class="small opacity-80">Empowering innovators, entrepreneurs, and tech enthusiasts.</p>
                 </div>
                 <div class="col-md-6 text-md-end">
                     <p class="small mb-0">&copy; <?php echo date('Y'); ?> County Government of Makueni. All rights reserved.</p>
-                    <p class="small mt-1">Empowering Innovators, Transforming Lives | Wote, Makueni County</p>
+                    <p class="small mt-1">Empowering Innovators, Transforming Lives | Wote,Green Park, Makueni County</p>
                 </div>
             </div>
         </div>
