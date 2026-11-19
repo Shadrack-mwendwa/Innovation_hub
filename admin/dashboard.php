@@ -1951,35 +1951,6 @@ $mentors_list = $pdo->query("SELECT m.*, u.full_name, u.email FROM mentors m JOI
         </div>
         <?php endif; ?>
 
-        <!-- ==================== MENTORS MANAGEMENT ==================== -->
-        <?php if($current_view == 'mentors'): ?>
-        <div class="detail-view">
-            <button class="back-btn" onclick="window.location.href='dashboard.php'"><i class="fas fa-arrow-left me-2"></i> Back</button>
-            <h3 class="section-title"><i class="fas fa-user-tie me-2"></i>Mentors</h3>
-            <div class="table-responsive">
-                <table class="table-custom">
-                    <thead><tr><th>Name</th><th>Email</th><th>Expertise</th><th>Experience</th><th>Status</th><th>Action</th></tr></thead>
-                    <tbody>
-                        <?php foreach($mentors_list as $mentor): ?>
-                        <tr>
-                            <td><strong><?php echo htmlspecialchars($mentor['full_name']); ?></strong></td>
-                            <td><?php echo htmlspecialchars($mentor['email']); ?></td>
-                            <td><?php echo htmlspecialchars(substr($mentor['expertise'] ?? '', 0, 40)); ?></td>
-                            <td><?php echo $mentor['years_experience'] ?? 0; ?> yrs</td>
-                            <td>
-                                <span class="status-badge <?php echo ($mentor['is_verified'] ?? 0) ? 'status-confirmed' : 'status-pending'; ?>">
-                                    <?php echo ($mentor['is_verified'] ?? 0) ? 'Verified' : 'Pending'; ?>
-                                </span>
-                            </td>
-                            <td><a href="edit-mentor.php?id=<?php echo $mentor['id']; ?>" class="btn btn-sm btn-primary btn-action">Edit</a></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <?php endif; ?>
-    </div>
 
     <!-- Add Event Modal -->
     <div class="modal fade" id="addEventModal" tabindex="-1">
